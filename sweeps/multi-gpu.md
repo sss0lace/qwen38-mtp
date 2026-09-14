@@ -408,3 +408,23 @@ herring; the metric was the problem.
 **The transferable lesson:** before comparing two engines with a streaming client, check
 tokens-per-chunk on each. One line of `stream_options: {"include_usage": true}` settles
 it, and without it a speculative-decoding gain can read as a loss.
+
+
+### 2× RTX 3060 12GB (tensor split): the flag is worth 72-78%, and the lighter file is what buys the context
+*by [@sss0lace](https://github.com/sss0lace)*
+
+Rig and method as in the rows above, both arms `--parallel 1` (rule 5). Every arm ran headless (`multi-user.target`): with the desktop resident this box held 221 MiB on GPU0, 18 MiB on GPU1 and 2,962 MiB of host RAM; headless with nothing loaded it reads 9 MiB, 1 MiB and 2,132 MiB.
+
+| file | ctx | spec | P1 code | P2 prose | P3 code | Overall | Session medians | Acceptance | VRAM at load (per GPU) |
+|---|---:|---|---:|---:|---:|---:|---|---|---|
+| `UD-Q4_K_XL` | 65,536 | off | 30.0 | 30.0 | 29.9 | 30.0 | 30.1, 30.0, 30.0 | — | 9,171 / 9,163 MiB |
+| `UD-Q4_K_XL` | 65,536 | n-max 4 | 65.0 | 36.2 | 53.3 | **53.3** | 52.0, 53.9, 53.3 | 0.271-0.923 | 9,943 / 9,935 MiB |
+| `Q4-XYZ-v2` | 65,536 | off | 34.2 | 34.2 | 34.1 | 34.2 | 34.1, 34.2, 34.2 | — | 8,007 / 7,999 MiB |
+| `Q4-XYZ-v2` | 65,536 | n-max 3 | 69.0 | 44.5 | 59.0 | **59.0** | 56.4, 59.0, 60.0 | 0.336-0.950 | 8,719 / 8,711 MiB |
+
+The flag is worth +78% on UD-Q4_K_XL and +73% on Q4-XYZ-v2. The file matters too, but less: swapping files moves the spec-off number from 30.0 to 34.2 and the flagged number from 53.3 to 59.0, and it is the lighter file that leaves room for the long context at all. n-max lands where the rules predict, and the optimum moves with the file: XYZ peaks at n-max 3 at 64K (56.9 / 59.0 / 58.4 for 2 / 3 / 4) while UD still creeps upward to 4 (52.5 / 53.1 / 53.3). Gating lost on both files: n-max 4 with `--spec-draft-p-min 0.60` returned 38.5 on UD and 46.0 on XYZ, against 53.3 and 58.4 ungated.
+
+| `Q4-XYZ-v2` | 131,072 | off | 34.2 | 34.3 | 34.1 | 34.2 | 34.2, 34.2, 34.2 | — | 8,903 / 8,895 MiB |
+| `Q4-XYZ-v2` | 131,072 | n-max 4 | 73.5 | 41.9 | 58.9 | **58.9** | 59.3, 58.4, 58.9 | 0.337-0.894 | 9,885 / 9,877 MiB |
+
+Doubling the context costs nothing measurable: 59.0 at 64K against 58.9 at 131K, for 1.2 GiB more VRAM in the cache. 131K was measured on the lighter file only, since 17.56 GB of weights plus a 131K q4_0 cache does not fit this pair's 24 GB aggregate.
