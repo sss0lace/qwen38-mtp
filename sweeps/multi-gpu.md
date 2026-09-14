@@ -412,7 +412,7 @@ it, and without it a speculative-decoding gain can read as a loss.
 
 ### 2× RTX 3060 12GB (tensor split): the n-max sweep, and the lighter file is what buys the context
 
-*by [@sss0lace](https://github.com/sss0lace)*
+*by [@sss0lace](https://github.com/sss0lace), PR #81*
 
 One board, two different dies (GA106 + GA104), no NVLink, PCIe x8 Gen3, `-sm tensor -ts 1,1`, both arms `--parallel 1`, q4_0 K and V, thinking off. Every arm ran headless: with the desktop resident this box holds 221 MiB on GPU0, 18 MiB on GPU1 and 2,962 MiB of host RAM; headless with nothing loaded it reads 9 MiB, 1 MiB and 2,132 MiB. Method: `probe.py` unchanged, three sessions per arm of three runs × three prompts, medians. Acceptance is the union range across the three sessions; `—` means speculation was off, so there was nothing to accept.
 
